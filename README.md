@@ -2,7 +2,7 @@
 
 ![Image](https://github.com/user-attachments/assets/d1dff63c-b3e6-455c-ba81-047a0af3c704)
 
-discord leetcode bot to keep track of streaks and leaderboards for server users 
+discord leetcode robot reminder to keep track of streaks and leaderboards for server users 
 
 Bot written in python. AI engineered.
 

@@ -106,10 +106,18 @@ async def leaderboard(ctx):
     leaderboard.sort(key=lambda x: x[1], reverse=True)
     top_5 = leaderboard[:5]
 
+    if not top_5:
+        await ctx.send("No one has a streak yet!")
+        return
+
     message_lines = ["🏆 **Top LeetCode Streaks**"]
     for i, (user_id, streak) in enumerate(top_5, 1):
-        user = await bot.fetch_user(user_id)
-        message_lines.append(f"{i}. {user.name} – {streak} day(s)")
+        try:
+            user = await bot.fetch_user(user_id)
+            username = user.name
+        except:
+            username = f"User {user_id}"
+        message_lines.append(f"{i}. {username} – {streak} day(s)")
 
     await ctx.send("\n".join(message_lines))
 

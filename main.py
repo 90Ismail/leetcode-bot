@@ -113,6 +113,11 @@ async def leaderboard(ctx):
 
     await ctx.send("\n".join(message_lines))
 
+@bot.command()
+async def test(ctx):
+    """Manually test the daily LeetCode message."""
+    await send_daily_question()
+    await ctx.send("📣 Test message sent!")
 # Optional: keep Render alive if using UptimeRobot
 keep_alive()
 

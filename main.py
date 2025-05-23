@@ -30,7 +30,7 @@ class DailyButtonView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="✅ I Did It", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="✅ I Did It", style=discord.ButtonStyle.success, custom_id="daily_streak_button")
     async def did_it_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = str(interaction.user.id)
         today = str(datetime.datetime.now(pytz.timezone("America/Chicago")).date())

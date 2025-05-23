@@ -4,22 +4,19 @@ from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ui import View, Button
 import datetime, json
-from keep_alive import keep_alive
-from pytz import timezone
+import pytz
+from keep_alive import keep_alive  # optional if you're pinging it
 
 TOKEN = os.environ["TOKEN"]
 CHANNEL_ID = 1261874667011182753
 STREAK_FILE = "streaks.json"
-
-# Use your local timezone (adjust as needed)
-LOCAL_TZ = timezone("America/Chicago")  # or use "UTC" if unsure
 
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-scheduler = AsyncIOScheduler(timezone=LOCAL_TZ)
+scheduler = AsyncIOScheduler(timezone="America/Chicago")
 
 # Load or initialize streaks
 if os.path.exists(STREAK_FILE):
@@ -28,15 +25,15 @@ if os.path.exists(STREAK_FILE):
 else:
     streak_data = {}
 
-# Button view
+# View for the daily button
 class DailyButtonView(View):
     def __init__(self):
-        super().__init__(timeout=None)  # Needed for persistent views
+        super().__init__(timeout=None)
 
-    @discord.ui.button(label="✅ I Did It", style=discord.ButtonStyle.success, custom_id="did_it_button")
+    @discord.ui.button(label="✅ I Did It", style=discord.ButtonStyle.success)
     async def did_it_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = str(interaction.user.id)
-        today = str(datetime.date.today())
+        today = str(datetime.datetime.now(pytz.timezone("America/Chicago")).date())
 
         if streak_data.get("today") != today:
             await interaction.response.send_message("This button is no longer active.", ephemeral=True)
@@ -47,9 +44,12 @@ class DailyButtonView(View):
             return
 
         previous = streak_data.get(user_id, {"streak": 0, "last": None})
-        yesterday = str(datetime.date.today() - datetime.timedelta(days=1))
+        yesterday = str((datetime.datetime.now(pytz.timezone("America/Chicago")) - datetime.timedelta(days=1)).date())
 
-        new_streak = previous["streak"] + 1 if previous["last"] == yesterday else 1
+        if previous["last"] == yesterday:
+            new_streak = previous["streak"] + 1
+        else:
+            new_streak = 1
 
         streak_data[user_id] = {
             "streak": new_streak,
@@ -61,20 +61,6 @@ class DailyButtonView(View):
             json.dump(streak_data, f)
 
         await interaction.response.send_message(f"🔥 Streak recorded! You're at {new_streak} days.", ephemeral=True)
-async def send_daily_question():
-    channel = bot.get_channel(CHANNEL_ID)
-    if channel:
-        today = str(datetime.date.today())
-        streak_data["today"] = today
-        streak_data["responses"] = {}
-
-        with open(STREAK_FILE, "w") as f:
-            json.dump(streak_data, f)
-
-        await channel.send(
-            f"📅 {today}\nClick the button if you solved LeetCode today 👇",
-            view=DailyButtonView()
-        )
 
 @bot.event
 async def on_ready():
@@ -85,20 +71,29 @@ async def on_ready():
         with open(STREAK_FILE, "w") as f:
             json.dump({}, f)
 
-    # Run immediately on boot
-    await send_daily_question()
-
-    # Schedule every day at 12:00 AM local time
     scheduler.add_job(send_daily_question, "cron", hour=0, minute=0)
     scheduler.start()
+
+async def send_daily_question():
+    channel = bot.get_channel(CHANNEL_ID)
+    if channel:
+        today = str(datetime.datetime.now(pytz.timezone("America/Chicago")).date())
+        streak_data["today"] = today
+        streak_data["responses"] = {}
+
+        with open(STREAK_FILE, "w") as f:
+            json.dump(streak_data, f)
+
+        await channel.send(
+            f"📅 {today}\nClick the button if you solved LeetCode today 👇\n🕛 You have until **12:00 AM CST tomorrow** to log today's grind.",
+            view=DailyButtonView()
+        )
 
 @bot.command()
 async def streak(ctx):
     user_id = str(ctx.author.id)
     user_data = streak_data.get(user_id, {"streak": 0})
-    await ctx.send(
-        f"🔥 {ctx.author.mention}, your current LeetCode streak is **{user_data['streak']}** day(s)!"
-    )
+    await ctx.send(f"🔥 {ctx.author.mention}, your current LeetCode streak is **{user_data['streak']}** day(s)!")
 
 @bot.command()
 async def leaderboard(ctx):

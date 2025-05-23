@@ -4,18 +4,22 @@ from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ui import View, Button
 import datetime, json
-from keep_alive import keep_alive  # optional if you're pinging it
+from keep_alive import keep_alive
+from pytz import timezone
 
 TOKEN = os.environ["TOKEN"]
-CHANNEL_ID = 1261874667011182753  # your actual channel ID
+CHANNEL_ID = 1261874667011182753
 STREAK_FILE = "streaks.json"
+
+# Use your local timezone (adjust as needed)
+LOCAL_TZ = timezone("America/Chicago")  # or use "UTC" if unsure
 
 intents = discord.Intents.default()
 intents.messages = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone=LOCAL_TZ)
 
 # Load or initialize streaks
 if os.path.exists(STREAK_FILE):
@@ -24,7 +28,7 @@ if os.path.exists(STREAK_FILE):
 else:
     streak_data = {}
 
-# View for the daily button
+# Button view
 class DailyButtonView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -61,18 +65,6 @@ class DailyButtonView(View):
 
         await interaction.response.send_message(f"🔥 Streak recorded! You're at {new_streak} days.", ephemeral=True)
 
-@bot.event
-async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
-    bot.add_view(DailyButtonView())  # Keep the view alive after restart
-
-    if not os.path.exists(STREAK_FILE):
-        with open(STREAK_FILE, "w") as f:
-            json.dump({}, f)
-
-    scheduler.add_job(send_daily_question, "cron", hour=5, minute=0)
-    scheduler.start()
-
 async def send_daily_question():
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
@@ -87,6 +79,22 @@ async def send_daily_question():
             f"📅 {today}\nClick the button if you solved LeetCode today 👇",
             view=DailyButtonView()
         )
+
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+    bot.add_view(DailyButtonView())
+
+    if not os.path.exists(STREAK_FILE):
+        with open(STREAK_FILE, "w") as f:
+            json.dump({}, f)
+
+    # Run immediately on boot
+    await send_daily_question()
+
+    # Schedule every day at 12:00 AM local time
+    scheduler.add_job(send_daily_question, "cron", hour=0, minute=0)
+    scheduler.start()
 
 @bot.command()
 async def streak(ctx):
@@ -121,14 +129,5 @@ async def leaderboard(ctx):
 
     await ctx.send("\n".join(message_lines))
 
-@bot.command()
-async def test(ctx):
-    """Manually test the daily LeetCode message."""
-    await send_daily_question()
-    await ctx.send("📣 Test message sent!")
-# Optional: keep Render alive if using UptimeRobot
 keep_alive()
-
 bot.run(TOKEN)
-
-

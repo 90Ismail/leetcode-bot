@@ -31,9 +31,9 @@ else:
 # Button view
 class DailyButtonView(View):
     def __init__(self):
-        super().__init__(timeout=None)
+        super().__init__(timeout=None)  # Needed for persistent views
 
-    @discord.ui.button(label="✅ I Did It", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="✅ I Did It", style=discord.ButtonStyle.success, custom_id="did_it_button")
     async def did_it_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = str(interaction.user.id)
         today = str(datetime.date.today())
@@ -49,10 +49,7 @@ class DailyButtonView(View):
         previous = streak_data.get(user_id, {"streak": 0, "last": None})
         yesterday = str(datetime.date.today() - datetime.timedelta(days=1))
 
-        if previous["last"] == yesterday:
-            new_streak = previous["streak"] + 1
-        else:
-            new_streak = 1
+        new_streak = previous["streak"] + 1 if previous["last"] == yesterday else 1
 
         streak_data[user_id] = {
             "streak": new_streak,
@@ -64,7 +61,6 @@ class DailyButtonView(View):
             json.dump(streak_data, f)
 
         await interaction.response.send_message(f"🔥 Streak recorded! You're at {new_streak} days.", ephemeral=True)
-
 async def send_daily_question():
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
